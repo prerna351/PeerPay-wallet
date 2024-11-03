@@ -1,5 +1,6 @@
 import express from "express";
 import db from "@repo/db/client";
+import axios from "axios";
 const app = express();
 
 app.use(express.json())
@@ -40,9 +41,19 @@ app.post("/hdfcWebhook", async (req, res) => {
             })
         ]);
 
+        //send confirmation to the hdfc backend
         res.status(200).json({
             message: "Captured"
         })
+
+        // Notify your application's backend (you may need to replace the URL with your backend's endpoint)
+        await axios.post('https://localhost:3001/api/webhookNotification', {
+            token: paymentInformation.token,
+            userId: paymentInformation.userId,
+            amount: paymentInformation.amount,
+        });
+
+
     } catch(e) {
         console.error(e);
         res.status(411).json({
