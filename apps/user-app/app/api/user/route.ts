@@ -22,63 +22,77 @@ export const GET = async () => {
 export const POST = async (req: Request) => {
     const session = await getServerSession(authOptions);
 
-    //if user logged in 
-    if(session?.user){ 
-        const { amount, bank } = await req.json(); 
-        const userId = session.user.id; 
-        console.log("check1")
-        try{
-            //send request to the dummy bank api
-            const bankApiResponse = await axios.post(`http://localhost:3002/api/${bank}/initiate-onramp`, {
-                userId,
-                amount
+    if (session?.user) {
+        const { amount, bank } = await req.json();
+        const userId = parseInt(session.user.id|| 10);
+
+        try {
+            // Check user's available balance (exclude locked amount)
+            const userBalance = await prisma.balance.findUnique({
+                where: { userId },
             });
+
+            if (!userBalance || userBalance.amount < amount) {
+                return NextResponse.json(
+                    { message: "Insufficient balance" },
+                    { status: 400 }
+                );
+            }
+
+            // Lock the amount by updating the balance table
+            await prisma.balance.update({
+                where: { userId },
+                data: {
+                    locked: {
+                        increment: amount, // Locking the funds
+                    },
+                    amount: {
+                        decrement: amount, // Decrease available balance
+                    },
+                },
+            });
+
+            // Send request to the dummy bank API
+            const bankApiResponse = await axios.post(
+                `http://localhost:3004/api/${bank}/initiate-onramp`,
+                { userId, amount }
+            );
             
 
-            //parse the response from the dummy bank api
             const { token, netBankingUrl } = bankApiResponse.data;
-           
-             // Create transaction record database
-             await prisma.onRampTransaction.create({
+
+            // Create transaction record in database
+            await prisma.onRampTransaction.create({
                 data: {
                     provider: bank,
-                    status: "Processing",
+                    status: "Processing", // Status indicating the transaction is being processed
                     startTime: new Date(),
                     token: token,
                     userId: Number(userId),
-                    amount: amount * 100,
-                }
+                    amount: amount * 100, // Store amount in smallest unit (e.g., cents)
+                },
             });
 
-            
-            // Redirect user to the bank's net banking page with the token in the URL
+            // Redirect the user to the bank's net banking page with the token
             const redirectUrl = new URL(netBankingUrl);
+            redirectUrl.searchParams.append("token", token);
+            // console.log(redirectUrl)
+            return NextResponse.json(redirectUrl.toString());
+            //all clear
             
-            redirectUrl.searchParams.append('token', token); // Add the token as a query parameter
-            
-            // return NextResponse.json({
-            //     msg: "Success"
-            // })
-            // all clear till here 
-
-            return NextResponse.json(redirectUrl.toString()); // Redirect to the new URL with token
-            
-
-        }catch(e){
+        } catch (e) {
             console.error("Error initiating onRamp transaction:", e);
-            return NextResponse.json({
-                message: "Error initiating onRamp transaction check1"
-              }, {
-                status: 500
-              });
+            return NextResponse.json(
+                { message: "Error initiating onRamp transaction" },
+                { status: 500 }
+            );
         }
+    }else{
+        return NextResponse.json(
+            { message: "You are not logged in " },
+            { status: 403 }
+        );
     }
 
-    //if user not logged in
-    return NextResponse.json({
-        message: "You are not logged in"
-      }, {
-        status: 403
-      });
-}
-
+    
+};

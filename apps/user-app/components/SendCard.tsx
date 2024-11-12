@@ -9,22 +9,31 @@ import { p2pTransfer } from "../app/lib/actions/p2pTransfer";
 export function SendCard() {
     const [number, setNumber] = useState("");
     const [amount, setAmount] = useState("");
+    const [message, setMessage] = useState(""); // To store success or error message
+
+    const handleTransfer = async () => {
+        const response = await p2pTransfer(number, Number(amount) * 100); // assuming 100 is for converting to cents
+        setMessage(response.message); // Display the message (either success or error)
+    };
 
     return <div className="h-[90vh]">
         <Center>
             <Card title="Send">
                 <div className="min-w-72 pt-2">
-                    <TextInput placeholder={"Number"} label="Number" onChange={(value) => {
-                        setNumber(value)
-                    }} />
-                    <TextInput placeholder={"Amount"} label="Amount" onChange={(value) => {
-                        setAmount(value)
-                    }} />
+                    <TextInput 
+                        placeholder={"Number"} 
+                        label="Number" 
+                        onChange={(value) => setNumber(value)} 
+                    />
+                    <TextInput 
+                        placeholder={"Amount"} 
+                        label="Amount" 
+                        onChange={(value) => setAmount(value)} 
+                    />
                     <div className="pt-4 flex justify-center">
-                        <Button onClick={async () => {
-                            await p2pTransfer(number, Number(amount) * 100)
-                        }}>Send</Button>
+                        <Button onClick={handleTransfer}>Send</Button>
                     </div>
+                    {message && <div className="pt-4 text-center text-sm">{message}</div>} {/* Display the message */}
                 </div>
             </Card>
         </Center>

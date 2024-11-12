@@ -15,7 +15,7 @@ export default function Layout({
                 <SidebarItem href={"/p2p"} icon={<P2PTransferIcon />} title="P2P Transfer" />
             </div>
         </div>
-            {children}
+          {children}
     </div>
   );
 }

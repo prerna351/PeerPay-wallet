@@ -28,10 +28,12 @@ export const AddMoney = () => {
                 bank,
                 amount: value,
             };
-            
+            console.log("hello before")
             // Make the request to your backend on clicking add money
             const response = await axios.post('/api/user', requestData);
-            window.location.href = response.data
+            console.log(response.data)
+            console.log("hello after")
+            // window.location.href = response.data
         
         } catch (error) {
             console.error('Error initiating transaction:', error);
